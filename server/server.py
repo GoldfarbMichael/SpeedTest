@@ -1,33 +1,9 @@
 import socket
 import time
-from config import BROADCAST_IP, BROADCAST_PORT, UDP_REQUEST_PORT, TCP_REQUEST_PORT, BROADCAST_INTERVAL, MAX_CONNECTIONS, SERVERS_IP
+from config import BROADCAST_IP, BROADCAST_PORT, UDP_REQUEST_PORT, TCP_REQUEST_PORT, BROADCAST_INTERVAL, MAX_CONNECTIONS, SERVERS_IP, SEGMENT_SIZE
 from utils import create_udp_broadcast_socket, pack_offer_message, pack_payload_message
 import threading
 import struct
-# def start_server():
-#     # Get the server's IP address
-#     hostname = socket.gethostname()
-#     server_ip = socket.gethostbyname(hostname)
-#
-#     # Create UDP broadcast socket
-#     broadcast_socket = utils.create_udp_broadcast_socket()
-#
-#     # Format the offer message
-#     offer_message = config.OFFER_MESSAGE.format(ip=server_ip)
-#     print(offer_message)
-#
-#     # Broadcast the message every second
-#     try:
-#         while True:
-#             broadcast_socket.sendto(offer_message.encode(), (config.BROADCAST_IP, BROADCAST_PORT))
-#             print(f"Broadcasting: {offer_message}")
-#             time.sleep(BROADCAST_INTERVAL)
-#     except KeyboardInterrupt:
-#         print("\nServer stopped.")
-#     finally:
-#         broadcast_socket.close()
-#
-
 def broadcast_offers():
     """Broadcast offer messages via UDP on a separate thread."""
     # Create a UDP socket for broadcasting
@@ -38,7 +14,7 @@ def broadcast_offers():
         while True:
             # Send the offer message as a broadcast
             sock.sendto(offer_message, (BROADCAST_IP, BROADCAST_PORT))
-            print(f"Broadcasting offer: UDP={UDP_REQUEST_PORT}, TCP={TCP_REQUEST_PORT}")
+            # print(f"Broadcasting offer: UDP={UDP_REQUEST_PORT}, TCP={TCP_REQUEST_PORT}")
             time.sleep(BROADCAST_INTERVAL)
     except KeyboardInterrupt:
         print("Stopping offer broadcast...")
@@ -68,7 +44,7 @@ def start_tcp_server():
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind(("", TCP_REQUEST_PORT))
     server_socket.listen(MAX_CONNECTIONS)
-    print(f"TCP server listening on IP address {SERVERS_IP}")
+    print(f"Server started, listening on IP address {SERVERS_IP}")
 
     try:
         while True:
@@ -109,12 +85,11 @@ def handle_udp_requests():
             print(f"Valid request received: {requested_size} bytes requested")
 
             # Calculate the number of segments
-            segment_size = 512  # Fixed size of each payload segment
-            segment_count = (requested_size + segment_size - 1) // segment_size  # Ceiling division
+            segment_count = (requested_size + SEGMENT_SIZE - 1) // SEGMENT_SIZE  # Ceiling division
 
             # Send each segment to the client
             for segment_number in range(segment_count):
-                payload = pack_payload_message(segment_count, segment_number, segment_size)
+                payload = pack_payload_message(segment_count, segment_number, SEGMENT_SIZE)
                 server_socket.sendto(payload, client_address)
 
             print(f"Finished sending {segment_count} segments to {client_address}")
