@@ -78,7 +78,6 @@ def payload_success_and_speed(received_segments, total_segments, trans_time):
         float: Percentage of successfully received packets.
     """
     if (not total_segments or not received_segments):
-        print("SUUUUUUUUUUUUUKAAAAAAAAAAAA")
         return 0, 0
     success_rate = (len(received_segments) / total_segments) * 100
     speed = (len(received_segments) * PAYLOAD_SEGMENT_SIZE * 8) / trans_time

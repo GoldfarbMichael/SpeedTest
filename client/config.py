@@ -6,9 +6,10 @@ BUFFER_SIZE = 1024     # Size of the buffer for receiving UDP data
 FILE_SIZE = 1048576      # Size of the file to request from the server
 SERVER_IP = None
 PAYLOAD_SEGMENT_SIZE = 512
-# Logging Configuration
-LOGGING_ENABLED = True  # Set to False to disable logging
+UDP_TIMEOUT = 1
+TCP_CONNECTIONS = None
+UDP_CONNECTIONS = None
 
-def set_server_IP(server_ip):
-    global SERVER_IP
-    SERVER_IP = server_ip
+def set_file_size(file_size):
+    global FILE_SIZE
+    FILE_SIZE = file_size

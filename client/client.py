@@ -1,14 +1,12 @@
-
-
-
 import socket
 import struct
 import sys
 import time
 import threading
 
-from config import BROADCAST_PORT, BUFFER_SIZE, LOGGING_ENABLED, UDP_REQUEST_PORT, FILE_SIZE, TCP_DEST_PORT
-from utils import create_udp_listener_socket, log_message, pack_udp_request, unpack_payload_message, \
+from config import BROADCAST_PORT, BUFFER_SIZE, FILE_SIZE, UDP_TIMEOUT
+from config import set_file_size
+from utils import create_udp_listener_socket, pack_udp_request, unpack_payload_message, \
     payload_success_and_speed, setup_thread_logger, FinishMessenger
 
 terminate_flag = threading.Event()
@@ -49,7 +47,7 @@ def send_udp_request(server_ip, server_udp_port):
     logger.debug(f"Sent request for {FILE_SIZE} bytes to {server_ip} on UDP port {server_udp_port}")
     return request_socket, logger
 
-def receive_payloads(server_ip, server_udp_port, my_socket, logger, finish_messenger, timeout=1):
+def receive_payloads(server_ip, server_udp_port, my_socket, logger, finish_messenger, timeout = UDP_TIMEOUT):
     my_socket.settimeout(timeout)
     my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     logger.debug(f"Receiving payloads from {server_ip}:{server_udp_port}...")
@@ -156,28 +154,33 @@ def run_client():
     full_sequence(fm)
 
 if __name__ == "__main__":
-    # try:
-    #     while not terminate_flag.is_set():
-    #         fm = FinishMessenger()
-    #         full_sequence(fm)
-    # except KeyboardInterrupt:
-    #     terminate_flag.set()
-    #     print("Client stopped at main.")
+    tcp_connections = input("Enter the number of TCP connections: ")
+    udp_connections = input("Enter the number of UDP connections: ")
+    file_size = input("Enter the file size (in bytes): ")
+    set_file_size(int(file_size))
+
+    try:
+        while not terminate_flag.is_set():
+            fm = FinishMessenger()
+            full_sequence(fm, int(udp_connections), int(tcp_connections))
+    except KeyboardInterrupt:
+        terminate_flag.set()
+        print("Client stopped at main.")
+
+    # Create two threads for running two clients
+
+    # while not terminate_flag.is_set():
+    #     client_thread_1 = threading.Thread(target=run_client, name="Client-1", daemon=True)
+    #     client_thread_2 = threading.Thread(target=run_client, name="Client-2", daemon=True)
     #
-    # # Create two threads for running two clients
-
-    while not terminate_flag.is_set():
-        client_thread_1 = threading.Thread(target=run_client, name="Client-1", daemon=True)
-        client_thread_2 = threading.Thread(target=run_client, name="Client-2", daemon=True)
-
-        # Start the threads
-        client_thread_1.start()
-        client_thread_2.start()
-        try:
-            client_thread_1.join()
-            client_thread_2.join()
-        except KeyboardInterrupt:
-            terminate_flag.set()
-            print("Client terminated at main.")
-            sys.exit(0)
-        print("Both clients have completed their transfers.")
+    #     # Start the threads
+    #     client_thread_1.start()
+    #     client_thread_2.start()
+    #     try:
+    #         client_thread_1.join()
+    #         client_thread_2.join()
+    #     except KeyboardInterrupt:
+    #         terminate_flag.set()
+    #         print("Client terminated at main.")
+    #         sys.exit(0)
+    #     print("Both clients have completed their transfers.")
