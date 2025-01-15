@@ -1,6 +1,6 @@
 import socket
 # Networking Configuration
-BROADCAST_IP = "255.255.255.255"  # Broadcast address
+BROADCAST_IP = "192.168.231.255"  # Broadcast address
 TCP_REQUEST_PORT = 4000           # Port for TCP requests
 BROADCAST_PORT = 5000             # Port for broadcasting offers
 UDP_REQUEST_PORT = 6000           # Port for UDP requests
