@@ -1,6 +1,6 @@
 import socket
 # Networking Configuration
-BROADCAST_IP = "192.168.231.255"  # Broadcast address
+  # Broadcast address
 TCP_REQUEST_PORT = 4000           # Port for TCP requests
 BROADCAST_PORT = 5000             # Port for broadcasting offers
 UDP_REQUEST_PORT = 6000           # Port for UDP requests
@@ -16,9 +16,18 @@ MAX_CONNECTIONS = 10              # Maximum number of simultaneous connections
 
 
 
+
 def get_own_ip():
     hostname = socket.gethostname()
     ip_address = socket.gethostbyname(hostname)
     return ip_address
+def set_broadcast_ip():
+    global BROADCAST_IP
+    b_ip = get_own_ip()[:-3]+"255"
+    BROADCAST_IP = b_ip
+    return b_ip
+BROADCAST_IP = set_broadcast_ip()
 
-SERVERS_IP = get_own_ip()
+
+
+
