@@ -55,6 +55,30 @@ def start_tcp_server():
     finally:
         server_socket.close()
 
+def handle_udp_client(data, client_address, server_socket):
+    """
+    Handle a single UDP client's request in a separate thread.
+    """
+    try:
+        # Parse the request packet
+        magic_cookie, message_type, requested_size = struct.unpack(">LBQ", data[:13])
+        if magic_cookie != 0xabcddcba or message_type != 0x3:
+            print(f"Invalid magic cookie or message type from {client_address}. Ignored.")
+            return
+
+        print(f"Valid request received from {client_address}: {requested_size} bytes requested")
+
+        # Calculate the number of segments
+        segment_count = (requested_size + SEGMENT_SIZE - 1) // SEGMENT_SIZE  # Ceiling division
+
+        # Send each segment to the client
+        for segment_number in range(segment_count):
+            payload = pack_payload_message(segment_count, segment_number, SEGMENT_SIZE)
+            server_socket.sendto(payload, client_address)
+
+        print(f"Finished sending {segment_count} segments to {client_address}")
+    except Exception as e:
+        print(f"Error handling UDP client {client_address}: {e}")
 
 def handle_udp_requests():
     """
@@ -71,39 +95,37 @@ def handle_udp_requests():
             data, client_address = server_socket.recvfrom(1024)
             print(f"Received UDP request from {client_address}")
 
-            # Validate the request
-            if len(data) < 13:  # Minimum size for a valid request packet
-                print("Invalid UDP request (too short). Ignored.")
-                continue
+            # Start a new thread to handle the request
+            client_thread = threading.Thread(
+                target=handle_udp_client,
+                args=(data, client_address, server_socket),
+                daemon=True  # Mark thread as daemon so it exits when the main process ends
+            )
+            client_thread.start()
 
-            # Parse the request packet
-            magic_cookie, message_type, requested_size = struct.unpack(">LBQ", data[:13])
-            if magic_cookie != 0xabcddcba or message_type != 0x3:
-                print("Invalid magic cookie or message type. Ignored.")
-                continue
-
-            print(f"Valid request received: {requested_size} bytes requested")
-
-            # Calculate the number of segments
-            segment_count = (requested_size + SEGMENT_SIZE - 1) // SEGMENT_SIZE  # Ceiling division
-
-            # Send each segment to the client
-            for segment_number in range(segment_count):
-                payload = pack_payload_message(segment_count, segment_number, SEGMENT_SIZE)
-                server_socket.sendto(payload, client_address)
-
-            print(f"Finished sending {segment_count} segments to {client_address}")
     except KeyboardInterrupt:
         print("Stopping UDP server...")
     finally:
         server_socket.close()
-
 if __name__ == "__main__":
-    # Start broadcasting offers in a separate thread
+
     broadcast_thread = threading.Thread(target=broadcast_offers, daemon=True)
     broadcast_thread.start()
+    print("Broadcast thread started.")
 
+    # Start the UDP server in a separate thread
     udp_thread = threading.Thread(target=handle_udp_requests, daemon=True)
     udp_thread.start()
-    # Start the TCP server
-    start_tcp_server()
+    print("UDP server thread started.")
+
+    # Start the TCP server in a separate thread
+    tcp_thread = threading.Thread(target=start_tcp_server, daemon=True)
+    tcp_thread.start()
+    print("TCP server thread started.")
+
+    # Keep the main thread alive to allow other threads to run
+    try:
+        while True:
+            time.sleep(1)  # Sleep to keep the main thread running
+    except KeyboardInterrupt:
+        print("Shutting down the server...")
