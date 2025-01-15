@@ -11,7 +11,6 @@ import threading
 def listen_for_offers():
     """
     Listen for UDP broadcast messages from the server and send a request.
-    important!!!!!: sets the server's IP address in the config file
     """
     # Create a UDP socket for listening
     sock = create_udp_listener_socket(BROADCAST_PORT)
@@ -52,7 +51,7 @@ def send_udp_request(server_ip, server_udp_port):
 
 
 
-def receive_payloads(server_ip, server_udp_port, my_socket, logger, finish_messenger, timeout=5):
+def receive_payloads(server_ip, server_udp_port, my_socket, logger, finish_messenger, timeout=1):
     """
     Receive payload messages from the server and calculate performance metrics.
     important!!!!!: 1)my_socket is the same socket that sent the request
@@ -61,6 +60,7 @@ def receive_payloads(server_ip, server_udp_port, my_socket, logger, finish_messe
     """
 
     my_socket.settimeout(timeout)
+    my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     logger.debug(f"Receiving payloads from {server_ip}:{server_udp_port}...")
 
     received_segments = set()
@@ -146,8 +146,7 @@ def handle_tcp_transfer(server_ip, server_tcp_port, thread_name, finish_messenge
         logger.error(f"Error during TCP transfer: {e}")
 
 
-def full_sequence(finish_messenger, udp_threads = 3, tcp_threads = 2):
-    request_socket = None
+def full_sequence(finish_messenger, udp_threads = 4, tcp_threads = 5):
     server_ip, server_udp_port, server_tcp_port = listen_for_offers()
     if not server_ip or not server_udp_port:
         print("Failed to receive an offer. Exiting.")

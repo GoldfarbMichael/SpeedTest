@@ -57,6 +57,8 @@ def unpack_payload_message(data):
     # Validate the magic cookie and message type
     if magic_cookie != 0xabcddcba or message_type != 0x4:
         raise ValueError("Invalid magic cookie or message type")
+    # if not total_segments or not current_segment:
+    #     raise ValueError("Error at total segments or current segment")
 
     # Extract the payload data
     payload_data = data[21:]
@@ -74,6 +76,9 @@ def payload_success_and_speed(received_segments, total_segments, trans_time):
     Returns:
         float: Percentage of successfully received packets.
     """
+    if (not total_segments or not received_segments):
+        print("SUUUUUUUUUUUUUKAAAAAAAAAAAA")
+        return 0, 0
     success_rate = (len(received_segments) / total_segments) * 100
     speed = (len(received_segments) * PAYLOAD_SEGMENT_SIZE * 8) / trans_time
     return success_rate, speed
