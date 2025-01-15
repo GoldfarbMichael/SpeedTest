@@ -8,16 +8,25 @@ from config import BROADCAST_PORT, BUFFER_SIZE, FILE_SIZE, UDP_TIMEOUT
 from config import set_file_size
 from utils import create_udp_listener_socket, pack_udp_request, unpack_payload_message, \
     payload_success_and_speed, setup_thread_logger, FinishMessenger
+from colorama import init, Fore, Style
 
 terminate_flag = threading.Event()
-
+"""
+RED - stop / error
+YELLOW - new broadcast
+CYAN - request
+WHITE - Transfer complete
+GREEN - client started / listening / thread start / sent
+BLUE - recieved
+GREEN - thread start
+"""
 def listen_for_offers():
     """
     Listen for UDP broadcast messages from the server and send a request.
     """
     sock = create_udp_listener_socket(BROADCAST_PORT)
 
-    print("Client started, listening for offer requests...")
+    print(Fore.GREEN +"Client started, listening for offer requests...")
     addr = None
     server_udp_port = None
     tcp_port = None
@@ -26,12 +35,12 @@ def listen_for_offers():
             data, addr = sock.recvfrom(BUFFER_SIZE)
             magic_cookie, message_type, server_udp_port, tcp_port = struct.unpack(">LBHH", data[:9])
             if magic_cookie != 0xabcddcba or message_type != 0x2:
-                print("Invalid offer message. Ignoring.")
+                print(Fore.RED +"Invalid offer message. Ignoring.")
                 continue
             print(f"Received offer from {addr[0]}")
             break
     except KeyboardInterrupt:
-        print("Client stopped while listening to offers.")
+        print(Fore.BLUE +"Client stopped while listening to offers.")
     finally:
         sock.close()
         if addr is None:
@@ -44,13 +53,13 @@ def send_udp_request(server_ip, server_udp_port):
     request_message = pack_udp_request(FILE_SIZE)
     request_socket.bind(("", 0))
     request_socket.sendto(request_message, (server_ip, server_udp_port))
-    logger.debug(f"Sent request for {FILE_SIZE} bytes to {server_ip} on UDP port {server_udp_port}")
+    logger.debug(Fore.GREEN +f"Sent request for {FILE_SIZE} bytes to {server_ip} on UDP port {server_udp_port}")
     return request_socket, logger
 
 def receive_payloads(server_ip, server_udp_port, my_socket, logger, finish_messenger, timeout = UDP_TIMEOUT):
     my_socket.settimeout(timeout)
     my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    logger.debug(f"Receiving payloads from {server_ip}:{server_udp_port}...")
+    logger.debug(Fore.BLUE +f"Receiving payloads from {server_ip}:{server_udp_port}...")
 
     received_segments = set()
     total_segments = None
@@ -65,7 +74,7 @@ def receive_payloads(server_ip, server_udp_port, my_socket, logger, finish_messe
             received_segments.add(current_segment)
             logger.debug(f"Received segment {current_segment + 1}/{total_segments}")
     except socket.timeout:
-        logger.error("Transfer complete. No data received for the timeout period.")
+        logger.error(Fore.WHITE +"Transfer complete. No data received for the timeout period.")
     finally:
         end_time = time.time()
         transfer_time = end_time - start_time
@@ -77,40 +86,40 @@ def handle_udp_transfer(server_ip, server_udp_port, thread_name, finish_messenge
     try:
         request_socket, logger = send_udp_request(server_ip, server_udp_port)
         receive_payloads(server_ip, server_udp_port, request_socket, logger, finish_messenger)
-        print(f"Thread {thread_name} completed UDP transfer.")
+        print(Fore.WHITE +f"Thread {thread_name} completed UDP transfer.")
     finally:
         if request_socket:
             request_socket.close()
 
 def handle_tcp_transfer(server_ip, server_tcp_port, thread_name, finish_messenger):
     logger = setup_thread_logger()
-    logger.debug(f"Connecting to {server_ip}:{server_tcp_port} for TCP transfer...")
+    logger.debug(Fore.GREEN +f"Connecting to {server_ip}:{server_tcp_port} for TCP transfer...")
     start_time = time.time()
 
     try:
         with socket.create_connection((server_ip, server_tcp_port)) as tcp_socket:
             tcp_socket.sendall(f"{FILE_SIZE}\n".encode())
-            logger.debug(f"Requested {FILE_SIZE} bytes from the server.")
+            logger.debug(Fore.CYAN +f"Requested {FILE_SIZE} bytes from the server.")
             received_bytes = 0
             while not terminate_flag.is_set():
                 data = tcp_socket.recv(4096)
                 if not data:
                     break
                 received_bytes += len(data)
-                logger.info(f"Received {len(data)} bytes ({received_bytes}/{FILE_SIZE})")
+                logger.info(Fore.BLUE +f"Received {len(data)} bytes ({received_bytes}/{FILE_SIZE})")
             end_time = time.time()
             transfer_time = end_time - start_time
             speed = (received_bytes * 8) / transfer_time
             finish_messenger.tcp_finished(transfer_time, speed)
-            print(f"Thread {thread_name} completed TCP transfer.")
+            print(Fore.WHITE +f"Thread {thread_name} completed TCP transfer.")
     except Exception as e:
-        logger.error(f"Error during TCP transfer: {e}")
+        logger.error(Fore.RED +f"Error during TCP transfer: {e}")
 
 def full_sequence(finish_messenger, udp_threads=2, tcp_threads=3):
 
     server_ip, server_udp_port, server_tcp_port = listen_for_offers()
     if not server_ip or not server_udp_port:
-        print("Failed to receive an offer. Exiting.")
+        print(Fore.RED +"Failed to receive an offer. Exiting.")
         return
 
     udp_thread_list = []
@@ -145,9 +154,9 @@ def full_sequence(finish_messenger, udp_threads=2, tcp_threads=3):
             thread.join()
     except KeyboardInterrupt:
         terminate_flag.set()
-        print("Client terminated.")
+        print(Fore.RED +"Client terminated.")
     if not terminate_flag.is_set():
-        print("All transfers complete, listening to offer requests")
+        print(Fore.WHITE +"All transfers complete, listening to offer requests")
 
 def run_client():
     fm = FinishMessenger()
@@ -165,7 +174,7 @@ if __name__ == "__main__":
             full_sequence(fm, int(udp_connections), int(tcp_connections))
     except KeyboardInterrupt:
         terminate_flag.set()
-        print("Client stopped at main.")
+        print(Fore.RED +"Client stopped at main.")
 
     # Create two threads for running two clients
 
