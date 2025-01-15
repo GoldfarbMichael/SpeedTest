@@ -11,6 +11,7 @@ def create_udp_listener_socket(port):
     Create and return a UDP socket for listening to broadcasts.
     """
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.bind(("", port))  # Bind to all available network interfaces
     return sock
 

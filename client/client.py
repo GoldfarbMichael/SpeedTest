@@ -146,7 +146,7 @@ def handle_tcp_transfer(server_ip, server_tcp_port, thread_name, finish_messenge
         logger.error(f"Error during TCP transfer: {e}")
 
 
-def full_sequence(finish_messenger, udp_threads = 4, tcp_threads = 5):
+def full_sequence(finish_messenger, udp_threads = 2, tcp_threads = 3):
     server_ip, server_udp_port, server_tcp_port = listen_for_offers()
     if not server_ip or not server_udp_port:
         print("Failed to receive an offer. Exiting.")
@@ -180,18 +180,44 @@ def full_sequence(finish_messenger, udp_threads = 4, tcp_threads = 5):
 
     # Wait for all UDP threads to complete
     for thread in udp_thread_list:
-        thread.join()
+        try:
+            thread.join()
+        except KeyboardInterrupt as e:
+            print(f"\nClient terminated {thread.name}: {e}\n")
 
     # Wait for all TCP threads to complete
     for thread in tcp_thread_list:
-        thread.join()
-
+        try:
+            thread.join()
+        except KeyboardInterrupt as e:
+            print(f"\nClient terminated {thread.name}: {e}\n")
     print("All transfers complete, listening to offer requests")
 
 
+def run_client():
+    fm = FinishMessenger()
+    full_sequence(fm)
 
 
 
 if __name__ == "__main__":
-    fm = FinishMessenger()
-    full_sequence(fm)
+    while(True):
+        fm = FinishMessenger()
+        full_sequence(fm)
+
+    # Create two threads for running two clients
+
+    # while(True):
+    #
+    #     client_thread_1 = threading.Thread(target=run_client, name="Client-1")
+    #     client_thread_2 = threading.Thread(target=run_client, name="Client-2")
+    #
+    #     # Start the threads
+    #     client_thread_1.start()
+    #     client_thread_2.start()
+    #
+    #     # Wait for both threads to complete
+    #     client_thread_1.join()
+    #     client_thread_2.join()
+    #
+    #     print("Both clients have completed their transfers.")
